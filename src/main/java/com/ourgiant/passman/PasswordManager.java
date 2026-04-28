@@ -93,6 +93,8 @@ public class PasswordManager extends JFrame {
     private JLabel strengthLabel;
     
     public static void main(String[] args) {
+        System.setProperty("awt.useSystemAAFontSettings", "on");
+        System.setProperty("swing.aatext", "true");
         // Ensure Java Cryptography Extension (JCE) is available
         try {
             int maxKeyLen = Cipher.getMaxAllowedKeyLength("AES");
@@ -120,6 +122,8 @@ public class PasswordManager extends JFrame {
     private Image createAppIcon() {
         BufferedImage icon = new BufferedImage(16, 16, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = icon.createGraphics();
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g2d.setColor(new Color(70, 130, 180));
         g2d.fillRect(0, 0, 16, 16);
         g2d.setColor(Color.WHITE);
