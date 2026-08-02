@@ -33,6 +33,25 @@ public final class AppPaths {
     private AppPaths() {}
 
     public static Path getAppDataDir() {
+        String override = System.getProperty("passman.appDataDir");
+        Path dir;
+
+        if (override != null && !override.isBlank()) {
+            dir = Paths.get(override);
+        } else {
+            dir = resolvePlatformAppDataDir();
+        }
+
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to create data directory: " + dir, e);
+        }
+
+        return dir;
+    }
+
+    private static Path resolvePlatformAppDataDir() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         Path dir;
 
@@ -50,12 +69,6 @@ public final class AppPaths {
                 xdgDataHome = Paths.get(System.getProperty("user.home"), ".local", "share").toString();
             }
             dir = Paths.get(xdgDataHome, "JavaPassManager");
-        }
-
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to create data directory: " + dir, e);
         }
 
         return dir;
