@@ -7,7 +7,7 @@
 
     <groupId>com.ourgiant.passman</groupId>
     <artifactId>password-manager</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>Password Manager</name>
@@ -89,7 +89,7 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.ourgiant.passman.PasswordManager</mainClass>
+                                    <mainClass>com.ourgiant.passman.Main</mainClass>
                                 </transformer>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
