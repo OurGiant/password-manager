@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Resolves a platform-appropriate app data directory and hardens file
  * permissions on the files stored there, shared by {@link DatabaseStore}
@@ -24,6 +27,8 @@ import java.util.Set;
  * in the same, correctly-permissioned place.
  */
 public final class AppPaths {
+
+    private static final Logger logger = LoggerFactory.getLogger(AppPaths.class);
 
     private AppPaths() {}
 
@@ -60,7 +65,7 @@ public final class AppPaths {
         try {
             AclFileAttributeView view = Files.getFileAttributeView(path, AclFileAttributeView.class);
             if (view == null) {
-                System.err.println("ACLs not supported on this filesystem.");
+                logger.warn("ACLs not supported on this filesystem.");
                 return;
             }
 
@@ -94,7 +99,7 @@ public final class AppPaths {
                         .setPermissions(perms)
                         .build());
             } catch (IOException e) {
-                System.err.println("SYSTEM principal not found: " + e);
+                logger.debug("SYSTEM principal not found: {}", e.getMessage());
             }
 
             try {
@@ -105,12 +110,12 @@ public final class AppPaths {
                         .setPermissions(perms)
                         .build());
             } catch (IOException e) {
-                System.err.println("Administrators principal not found: " + e);
+                logger.debug("Administrators principal not found: {}", e.getMessage());
             }
 
             view.setAcl(acl);
         } catch (Exception e) {
-            System.err.println("Warning: failed to set ACL for " + path + ": " + e);
+            logger.warn("Failed to set ACL for {}", path, e);
         }
     }
 }

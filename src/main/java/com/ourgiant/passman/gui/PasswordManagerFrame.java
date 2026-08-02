@@ -12,6 +12,10 @@ import com.ourgiant.passman.core.DatabaseStore;
 import com.ourgiant.passman.core.TotpService;
 import com.ourgiant.passman.model.DatabaseWrapper;
 import com.ourgiant.passman.model.PasswordEntry;
+import com.ourgiant.passman.util.AppVersion;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -41,6 +45,8 @@ import java.time.format.DateTimeFormatter;
  * - Secure memory clearing
  */
 public class PasswordManagerFrame extends JFrame {
+
+    private static final Logger logger = LoggerFactory.getLogger(PasswordManagerFrame.class);
 
     private static final String DB_FILE = DatabaseStore.DB_FILE;
     private static final int AUTO_LOCK_MINUTES = 5;
@@ -113,7 +119,7 @@ public class PasswordManagerFrame extends JFrame {
     }
 
     public PasswordManagerFrame() {
-        setTitle("FIPS-Compliant Password Manager with TOTP MFA");
+        setTitle("FIPS-Compliant Password Manager with TOTP MFA v" + AppVersion.resolve());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 650);
         setLocationRelativeTo(null);
@@ -411,7 +417,7 @@ public class PasswordManagerFrame extends JFrame {
 
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Setup failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+            logger.error("Setup failed", e);
         } finally {
             Arrays.fill(password, '\0');
         }
@@ -512,7 +518,7 @@ public class PasswordManagerFrame extends JFrame {
             qrLabel.setVerticalAlignment(JLabel.CENTER);
             QRPanel.setPreferredSize(new Dimension(260, 260));
             QRPanel.add(qrLabel, BorderLayout.CENTER);
-        } catch (Exception e) {System.out.println("Failed to create QR Code: " + e);}
+        } catch (Exception e) {logger.warn("Failed to create QR code", e);}
 
 
         // Secret key section
@@ -690,7 +696,7 @@ public class PasswordManagerFrame extends JFrame {
             qrLabel.setVerticalAlignment(JLabel.CENTER);
             QRPanel.setPreferredSize(new Dimension(260, 260));
             QRPanel.add(qrLabel, BorderLayout.CENTER);
-        } catch (Exception e) {System.out.println("Failed to create QR Code: " + e);}
+        } catch (Exception e) {logger.warn("Failed to create QR code", e);}
 
         JLabel typeLabel = new JLabel("Type: Time-based (TOTP)");
         typeLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -794,7 +800,7 @@ public class PasswordManagerFrame extends JFrame {
 
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+            logger.error("Save failed", e);
         } finally {
             Arrays.fill(password, '\0');
         }
@@ -843,7 +849,7 @@ public class PasswordManagerFrame extends JFrame {
                 try {
                     saveDatabase(null);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    logger.error("Failed to save database after removing entry for exceeded PIN attempts", e);
                 }
                 refreshTable();
                 JOptionPane.showMessageDialog(this,
@@ -875,7 +881,7 @@ public class PasswordManagerFrame extends JFrame {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Failed to decrypt password: " + e.getMessage(),
                 "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+            logger.error("Failed to decrypt password", e);
         }
     }
 
@@ -1084,7 +1090,7 @@ public class PasswordManagerFrame extends JFrame {
                 byte[] keyBytes = masterKey.getEncoded();
                 Arrays.fill(keyBytes, (byte) 0);
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Failed to zero master key material", e);
             }
             masterKey = null;
         }
