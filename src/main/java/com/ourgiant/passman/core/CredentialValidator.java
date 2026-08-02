@@ -3,17 +3,19 @@ package com.ourgiant.passman.core;
 import com.nulabinc.zxcvbn.Strength;
 import com.nulabinc.zxcvbn.Zxcvbn;
 
+import java.util.Arrays;
+
 public final class CredentialValidator {
 
     private CredentialValidator() {}
 
     public static CredentialCheckResult validateCredentials(
-            String password, String confirmPassword,
-            String pin, String confirmPin,
+            char[] password, char[] confirmPassword,
+            char[] pin, char[] confirmPin,
             double pinMinEntropyBits) {
 
         // --- Password checks ---
-        if (password == null || !password.equals(confirmPassword)) {
+        if (password == null || !Arrays.equals(password, confirmPassword)) {
             return new CredentialCheckResult(false, "Passwords do not match!");
         }
 
@@ -23,7 +25,7 @@ public final class CredentialValidator {
         }
 
         // --- PIN checks ---
-        if (pin == null || !pin.equals(confirmPin)) {
+        if (pin == null || !Arrays.equals(pin, confirmPin)) {
             return new CredentialCheckResult(false, "PINs do not match!");
         }
 
@@ -39,7 +41,8 @@ public final class CredentialValidator {
     /**
      * Check PIN strength and provide feedback
      */
-    public static PinStrengthResult checkPinStrength(String pin, double minEntropyBits) {
+    public static PinStrengthResult checkPinStrength(char[] pinChars, double minEntropyBits) {
+        String pin = pinChars == null ? null : new String(pinChars);
         if (pin == null || !pin.matches("\\d{4,9}")) {
             return new PinStrengthResult(false, "PIN must be 4-9 digits.", 0);
         }
@@ -93,11 +96,14 @@ public final class CredentialValidator {
         return new PinStrengthResult(true, "PIN is strong.", entropy);
     }
 
-    public static boolean isStrongPassword(String password) {
-        if (password == null || password.isEmpty()) return false;
+    public static boolean isStrongPassword(char[] password) {
+        if (password == null || password.length == 0) return false;
 
+        // zxcvbn's API only accepts String; this is a short-lived local copy
+        // used once for the strength check, not stored or passed further.
+        String passwordStr = new String(password);
         Zxcvbn zxcvbn = new Zxcvbn();
-        Strength strength = zxcvbn.measure(password);
+        Strength strength = zxcvbn.measure(passwordStr);
 
         // strength score is 0–4; 3+ is considered "strong"
         return strength.getScore() >= 3;

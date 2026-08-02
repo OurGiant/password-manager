@@ -6,9 +6,12 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
+import java.util.Arrays;
 
 public final class CryptoService {
 
@@ -31,14 +34,14 @@ public final class CryptoService {
         return iv;
     }
 
-    public static SecretKey deriveKey(String password, byte[] salt) throws Exception {
+    public static SecretKey deriveKey(char[] password, byte[] salt) throws Exception {
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, KEY_SIZE);
+        KeySpec spec = new PBEKeySpec(password, salt, PBKDF2_ITERATIONS, KEY_SIZE);
         SecretKey tmp = factory.generateSecret(spec);
         return new SecretKeySpec(tmp.getEncoded(), "AES");
     }
 
-    public static byte[] encryptPassword(String password, SecretKey masterKey) throws Exception {
+    public static byte[] encryptPassword(char[] password, SecretKey masterKey) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         byte[] iv = new byte[GCM_IV_LENGTH];
         new SecureRandom().nextBytes(iv);
@@ -46,7 +49,13 @@ public final class CryptoService {
         GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
         cipher.init(Cipher.ENCRYPT_MODE, masterKey, parameterSpec);
 
-        byte[] encrypted = cipher.doFinal(password.getBytes(StandardCharsets.UTF_8));
+        byte[] passwordBytes = charsToUtf8Bytes(password);
+        byte[] encrypted;
+        try {
+            encrypted = cipher.doFinal(passwordBytes);
+        } finally {
+            Arrays.fill(passwordBytes, (byte) 0);
+        }
 
         byte[] result = new byte[iv.length + encrypted.length];
         System.arraycopy(iv, 0, result, 0, iv.length);
@@ -68,5 +77,26 @@ public final class CryptoService {
 
         byte[] decrypted = cipher.doFinal(encrypted);
         return new String(decrypted, StandardCharsets.UTF_8);
+    }
+
+    /** Constant-time comparison for secret values such as PINs and TOTP codes. */
+    public static boolean constantTimeEquals(char[] a, char[] b) {
+        if (a == null || b == null) return a == b;
+        return MessageDigest.isEqual(charsToUtf8Bytes(a), charsToUtf8Bytes(b));
+    }
+
+    public static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return a == b;
+        return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static byte[] charsToUtf8Bytes(char[] chars) {
+        java.nio.ByteBuffer buffer = StandardCharsets.UTF_8.encode(CharBuffer.wrap(chars));
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        if (buffer.hasArray()) {
+            Arrays.fill(buffer.array(), (byte) 0);
+        }
+        return bytes;
     }
 }

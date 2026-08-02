@@ -48,7 +48,7 @@ public class PasswordManagerFrame extends JFrame {
 
     // Security state
     private SecretKey masterKey;
-    private String commonPin;
+    private char[] commonPin;
     private String totpSecret;
     private int failedPinAttempts = 0;
     private int failedLoginAttempts = 0;
@@ -132,7 +132,7 @@ public class PasswordManagerFrame extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                secureClearMemory();
+                secureClearMemory("closed");
             }
         });
 
@@ -339,16 +339,16 @@ public class PasswordManagerFrame extends JFrame {
                 String totpCode = totpField != null ? totpField.getText().trim() : "";
 
                 attemptLogin(
-                    new String(masterPasswordField.getPassword()),
-                    new String(pinField.getPassword()),
+                    masterPasswordField.getPassword(),
+                    pinField.getPassword(),
                     totpCode
                 );
             } else {
                 attemptSetup(
-                    new String(masterPasswordField.getPassword()),
-                    new String(pinField.getPassword()),
-                    new String(finalConfirmPasswordField.getPassword()),
-                    new String(finalConfirmPinField.getPassword()),
+                    masterPasswordField.getPassword(),
+                    pinField.getPassword(),
+                    finalConfirmPasswordField.getPassword(),
+                    finalConfirmPinField.getPassword(),
                     "" // TOTP code not needed for setup
                 );
             }
@@ -361,14 +361,19 @@ public class PasswordManagerFrame extends JFrame {
         repaint();
     }
 
-    private void attemptSetup(String password, String pin, String confirmPassword, String confirmPin, String totpCode) {
+    private void attemptSetup(char[] password, char[] pin, char[] confirmPassword, char[] confirmPin, String totpCode) {
 
         CredentialCheckResult result = CredentialValidator.validateCredentials(password, confirmPassword, pin, confirmPin, 16); // 16-bit entropy for PIN
         if (!result.valid) {
             JOptionPane.showMessageDialog(this, result.message, "Error", JOptionPane.ERROR_MESSAGE);
+            Arrays.fill(password, '\0');
+            Arrays.fill(confirmPassword, '\0');
+            Arrays.fill(pin, '\0');
+            Arrays.fill(confirmPin, '\0');
             return;
         }
-
+        Arrays.fill(confirmPassword, '\0');
+        Arrays.fill(confirmPin, '\0');
 
         try {
             // Generate TOTP secret
@@ -407,10 +412,12 @@ public class PasswordManagerFrame extends JFrame {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Setup failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
+        } finally {
+            Arrays.fill(password, '\0');
         }
     }
 
-    private void attemptLogin(String password, String pin, String totpCode) {
+    private void attemptLogin(char[] password, char[] pin, String totpCode) {
         try {
             failedLoginAttempts++;
 
@@ -423,7 +430,7 @@ public class PasswordManagerFrame extends JFrame {
                 System.exit(0);
             }
 
-            if (!pin.matches("\\d{4,6}")) {
+            if (!isValidPinFormat(pin, 4, 6)) {
                 JOptionPane.showMessageDialog(this, "Invalid PIN format!", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -455,7 +462,17 @@ public class PasswordManagerFrame extends JFrame {
             JOptionPane.showMessageDialog(this,
                 "Login failed! Attempts remaining: " + (MAX_ATTEMPTS - failedLoginAttempts),
                 "Error", JOptionPane.ERROR_MESSAGE);
+        } finally {
+            Arrays.fill(password, '\0');
         }
+    }
+
+    private static boolean isValidPinFormat(char[] pin, int minLength, int maxLength) {
+        if (pin.length < minLength || pin.length > maxLength) return false;
+        for (char c : pin) {
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
     }
 
     private String showTOTPSetupDialogWithVerification() {
@@ -683,12 +700,6 @@ public class PasswordManagerFrame extends JFrame {
         detailsLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         secretPanel.add(detailsLabel);
 
-        // Add current code for debugging
-        String currentCode = TotpService.generateCurrentTOTP(totpSecret);
-        JLabel debugLabel = new JLabel("<html><b>Current Expected Code (for testing):</b> <font color='red'>" + currentCode + "</font></html>");
-        debugLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        secretPanel.add(debugLabel);
-
         panel.add(secretPanel, BorderLayout.CENTER);
 
         dialog.add(panel, BorderLayout.CENTER);
@@ -748,10 +759,11 @@ public class PasswordManagerFrame extends JFrame {
 
         String location = locationField.getText().trim();
         String username = usernameField.getText().trim();
-        String password = new String(passwordField.getPassword());
+        char[] password = passwordField.getPassword();
 
-        if (location.isEmpty() || username.isEmpty() || password.isEmpty()) {
+        if (location.isEmpty() || username.isEmpty() || password.length == 0) {
             JOptionPane.showMessageDialog(this, "Please fill all fields!", "Error", JOptionPane.ERROR_MESSAGE);
+            Arrays.fill(password, '\0');
             return;
         }
 
@@ -783,6 +795,8 @@ public class PasswordManagerFrame extends JFrame {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
+        } finally {
+            Arrays.fill(password, '\0');
         }
     }
 
@@ -816,11 +830,11 @@ public class PasswordManagerFrame extends JFrame {
 
         if (result != JOptionPane.OK_OPTION) return;
 
-        String pin = new String(pinField.getPassword());
+        char[] pin = pinField.getPassword();
+        boolean pinMatches = CryptoService.constantTimeEquals(pin, commonPin);
+        Arrays.fill(pin, '\0');
 
-        if (pin == null) return;
-
-        if (!pin.equals(commonPin)) {
+        if (!pinMatches) {
             failedPinAttempts++;
             AuditLog.log("Failed PIN attempt for: " + entry.location + " (attempt " + failedPinAttempts + ")");
 
@@ -984,6 +998,7 @@ public class PasswordManagerFrame extends JFrame {
         if (autoLockTimer != null) {
             autoLockTimer.stop();
         }
+        secureClearMemory("locked");
         showLoginDialog();
         AuditLog.log("Application locked");
     }
@@ -1063,7 +1078,7 @@ public class PasswordManagerFrame extends JFrame {
         totpSecret = wrapper.getTotpSecret();
     }
 
-    private void secureClearMemory() {
+    private void secureClearMemory(String reason) {
         if (masterKey != null) {
             try {
                 byte[] keyBytes = masterKey.getEncoded();
@@ -1071,11 +1086,11 @@ public class PasswordManagerFrame extends JFrame {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            masterKey = null;
         }
 
         if (commonPin != null) {
-            char[] pinChars = commonPin.toCharArray();
-            Arrays.fill(pinChars, '0');
+            Arrays.fill(commonPin, '\0');
             commonPin = null;
         }
 
@@ -1089,6 +1104,6 @@ public class PasswordManagerFrame extends JFrame {
             passwordField.setText("");
         }
 
-        AuditLog.log("Application closed - memory cleared");
+        AuditLog.log("Memory cleared (" + reason + ")");
     }
 }
