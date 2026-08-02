@@ -1,8 +1,5 @@
 package com.ourgiant.passman.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 
 public final class AuditLog {
 
-    private static final Logger logger = LoggerFactory.getLogger(AuditLog.class);
     private static final Path LOG_PATH = AppPaths.getAppDataDir().resolve("audit.log");
 
     private AuditLog() {}
@@ -25,7 +21,7 @@ public final class AuditLog {
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             AppPaths.restrictToCurrentUser(LOG_PATH);
         } catch (Exception e) {
-            logger.error("Failed to write audit log entry", e);
+            e.printStackTrace();
         }
     }
 }

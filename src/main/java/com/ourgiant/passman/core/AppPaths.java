@@ -17,9 +17,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Resolves a platform-appropriate app data directory and hardens file
  * permissions on the files stored there, shared by {@link DatabaseStore}
@@ -28,30 +25,9 @@ import org.slf4j.LoggerFactory;
  */
 public final class AppPaths {
 
-    private static final Logger logger = LoggerFactory.getLogger(AppPaths.class);
-
     private AppPaths() {}
 
     public static Path getAppDataDir() {
-        String override = System.getProperty("passman.appDataDir");
-        Path dir;
-
-        if (override != null && !override.isBlank()) {
-            dir = Paths.get(override);
-        } else {
-            dir = resolvePlatformAppDataDir();
-        }
-
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to create data directory: " + dir, e);
-        }
-
-        return dir;
-    }
-
-    private static Path resolvePlatformAppDataDir() {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         Path dir;
 
@@ -71,6 +47,12 @@ public final class AppPaths {
             dir = Paths.get(xdgDataHome, "JavaPassManager");
         }
 
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to create data directory: " + dir, e);
+        }
+
         return dir;
     }
 
@@ -78,7 +60,7 @@ public final class AppPaths {
         try {
             AclFileAttributeView view = Files.getFileAttributeView(path, AclFileAttributeView.class);
             if (view == null) {
-                logger.warn("ACLs not supported on this filesystem.");
+                System.err.println("ACLs not supported on this filesystem.");
                 return;
             }
 
@@ -112,7 +94,7 @@ public final class AppPaths {
                         .setPermissions(perms)
                         .build());
             } catch (IOException e) {
-                logger.debug("SYSTEM principal not found: {}", e.getMessage());
+                System.err.println("SYSTEM principal not found: " + e);
             }
 
             try {
@@ -123,12 +105,12 @@ public final class AppPaths {
                         .setPermissions(perms)
                         .build());
             } catch (IOException e) {
-                logger.debug("Administrators principal not found: {}", e.getMessage());
+                System.err.println("Administrators principal not found: " + e);
             }
 
             view.setAcl(acl);
         } catch (Exception e) {
-            logger.warn("Failed to set ACL for {}", path, e);
+            System.err.println("Warning: failed to set ACL for " + path + ": " + e);
         }
     }
 }

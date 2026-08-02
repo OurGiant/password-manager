@@ -1,26 +1,17 @@
 package com.ourgiant.passman;
 
-import com.ourgiant.passman.core.AppPaths;
 import com.ourgiant.passman.gui.PasswordManagerFrame;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 public final class Main {
 
     private Main() {}
 
     public static void main(String[] args) {
-        // Must be set before the first logger is obtained, so logback.xml's
-        // file appender resolves to the app's real data directory.
-        System.setProperty("app.data.dir", AppPaths.getAppDataDir().toString());
-
-        Logger logger = LoggerFactory.getLogger(Main.class);
-
         System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("swing.aatext", "true");
         // Ensure Java Cryptography Extension (JCE) is available
@@ -33,12 +24,16 @@ public final class Main {
                 System.exit(1);
             }
         } catch (Exception e) {
-            logger.error("Failed to check JCE key length policy", e);
+            e.printStackTrace();
             System.exit(1);
         }
 
         SwingUtilities.invokeLater(() -> {
-            ThemeManager.applyDefaultTheme();
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             new PasswordManagerFrame();
         });
     }
