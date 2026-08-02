@@ -5,6 +5,9 @@ import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.awt.image.BufferedImage;
@@ -12,6 +15,8 @@ import java.io.ByteArrayOutputStream;
 import java.security.SecureRandom;
 
 public final class TotpService {
+
+    private static final Logger logger = LoggerFactory.getLogger(TotpService.class);
 
     public static final int TOTP_DIGITS = 6;
     public static final int TOTP_PERIOD = 30; // seconds
@@ -95,7 +100,7 @@ public final class TotpService {
             return String.format("%0" + TOTP_DIGITS + "d", otp);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("TOTP generation error", e);
             AuditLog.log("TOTP generation error: " + e.getMessage());
             return null;
         }
