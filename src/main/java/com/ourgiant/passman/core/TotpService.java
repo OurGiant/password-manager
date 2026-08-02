@@ -125,15 +125,13 @@ public final class TotpService {
         // Check current and adjacent time windows (allows for clock skew)
         for (int i = -2; i <= 2; i++) {
             String validCode = generateTOTP(totpSecret, currentTime + i);
-            if (validCode != null && code.equals(validCode)) {
+            if (validCode != null && CryptoService.constantTimeEquals(code, validCode)) {
                 AuditLog.log("TOTP verified successfully (window offset: " + i + ")");
                 return true;
             }
         }
 
-        // Log what we were expecting vs what we got (for debugging)
-        String expectedCurrent = generateTOTP(totpSecret, currentTime);
-        AuditLog.log("TOTP verification failed. Expected (current): " + expectedCurrent + ", Got: " + code);
+        AuditLog.log("TOTP verification failed.");
 
         return false;
     }
