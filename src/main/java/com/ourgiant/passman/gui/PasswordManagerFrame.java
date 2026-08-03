@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.*;
 
+import com.ourgiant.passman.AppPreferences;
 import com.ourgiant.passman.core.AuditLog;
 import com.ourgiant.passman.core.CredentialValidator;
 import com.ourgiant.passman.core.CredentialValidator.CredentialCheckResult;
@@ -13,6 +14,7 @@ import com.ourgiant.passman.core.TotpService;
 import com.ourgiant.passman.model.DatabaseWrapper;
 import com.ourgiant.passman.model.PasswordEntry;
 import com.ourgiant.passman.util.AppVersion;
+import com.ourgiant.passman.util.UpdateChecker;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,8 @@ public class PasswordManagerFrame extends JFrame {
     private static final String DB_FILE = DatabaseStore.DB_FILE;
     private static final int AUTO_LOCK_MINUTES = 5;
     private static final int MAX_ATTEMPTS = 3;
+
+    private final AppPreferences preferences = new AppPreferences();
 
     // Security state
     private SecretKey masterKey;
@@ -115,7 +119,59 @@ public class PasswordManagerFrame extends JFrame {
         fileMenu.add(exitItem);
 
         menuBar.add(fileMenu);
+
+        JMenu helpMenu = new JMenu("Help");
+        helpMenu.setMnemonic(KeyEvent.VK_H);
+
+        JMenuItem aboutItem = new JMenuItem("About");
+        aboutItem.addActionListener(e -> new AboutDialog(this).setVisible(true));
+        helpMenu.add(aboutItem);
+
+        menuBar.add(helpMenu);
+
         setJMenuBar(menuBar);
+    }
+
+    /**
+     * Silent unless there's actually something to say: no UI at all if up to date or the check
+     * fails, and only once per newly-released version (not once per launch) if there's an
+     * update — otherwise a known update sitting unapplied would pop this on every single
+     * startup. A user can still always check manually via Help > About regardless of this
+     * state. This is the app's only outbound network call, fully isolated from the vault/crypto
+     * code paths: a plain GET to the public GitHub releases API, nothing derived from the
+     * master password, PIN, TOTP secret, or stored entries.
+     */
+    private void checkForUpdateAndNotifyIfNewer() {
+        SwingWorker<Optional<UpdateChecker.ReleaseInfo>, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Optional<UpdateChecker.ReleaseInfo> doInBackground() {
+                return UpdateChecker.fetchLatestRelease();
+            }
+
+            @Override
+            protected void done() {
+                Optional<UpdateChecker.ReleaseInfo> release;
+                try {
+                    release = get();
+                } catch (Exception e) {
+                    logger.warn("Silent startup update check failed", e);
+                    return;
+                }
+                if (release.isEmpty()) {
+                    return;
+                }
+                UpdateChecker.ReleaseInfo info = release.get();
+                if (!UpdateChecker.isNewerVersion(info.version(), AppVersion.resolve())) {
+                    return;
+                }
+                if (info.version().equals(preferences.getLastNotifiedUpdateVersion())) {
+                    return;
+                }
+                preferences.setLastNotifiedUpdateVersion(info.version());
+                new AboutDialog(PasswordManagerFrame.this, info).setVisible(true);
+            }
+        };
+        worker.execute();
     }
 
     public PasswordManagerFrame() {
@@ -141,6 +197,8 @@ public class PasswordManagerFrame extends JFrame {
                 secureClearMemory("closed");
             }
         });
+
+        checkForUpdateAndNotifyIfNewer();
 
         setVisible(true);
     }
