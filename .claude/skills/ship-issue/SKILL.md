@@ -8,7 +8,7 @@ description: The standard workflow for shipping a bug fix or feature to Password
 Follow `java-swing-ship-issue` (the generic workflow shared across the
 Java Swing project family) with these Password Manager specifics:
 
-- **Project path**: `/projects/password-manager` inside the build
+- **Project path**: `/projects/OHI/password-manager` inside the build
   container.
 - **Verify**: use this repo's own `.claude/skills/verify/SKILL.md` for
   build/launch mechanics.
@@ -29,7 +29,7 @@ Java Swing project family) with these Password Manager specifics:
   before opening the PR (issue #2 in this project's history was exactly
   this mistake).
 - CI (`.github/workflows/build.yml`) runs `mvn test` on every PR — wait
-  for it to go green per the generic workflow's step 8. It does not yet
-  build native installers (jpackage matrix deferred, see issue #12); add
-  that as a separate, deliberately-scoped change if the project reaches
-  the point of cutting real installer releases.
+  for it to go green per the generic workflow's step 8. Native installers
+  (Windows/macOS/Linux via jpackage) build only on `v*` tag pushes, not
+  on every PR — that matrix has been in place since #22/#23, so don't
+  re-defer it or re-file it as missing.
