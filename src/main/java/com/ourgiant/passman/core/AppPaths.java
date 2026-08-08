@@ -9,6 +9,8 @@ import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.util.ArrayList;
@@ -78,7 +80,11 @@ public final class AppPaths {
         try {
             AclFileAttributeView view = Files.getFileAttributeView(path, AclFileAttributeView.class);
             if (view == null) {
-                logger.warn("ACLs not supported on this filesystem.");
+                // NFSv4 ACLs (what AclFileAttributeView models) aren't satisfied by
+                // POSIX/ext4 filesystems, so getFileAttributeView returns null there
+                // even though the file is real and needs restricting. Fall back to a
+                // plain owner-only POSIX mode instead of leaving default permissions.
+                restrictToCurrentUserPosix(path);
                 return;
             }
 
@@ -129,6 +135,18 @@ public final class AppPaths {
             view.setAcl(acl);
         } catch (Exception e) {
             logger.warn("Failed to set ACL for {}", path, e);
+        }
+    }
+
+    private static void restrictToCurrentUserPosix(Path path) {
+        try {
+            if (Files.getFileAttributeView(path, PosixFileAttributeView.class) == null) {
+                logger.warn("Neither ACLs nor POSIX permissions are supported for {}", path);
+                return;
+            }
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
+        } catch (Exception e) {
+            logger.warn("Failed to set POSIX permissions for {}", path, e);
         }
     }
 }

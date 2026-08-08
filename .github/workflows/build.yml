@@ -110,7 +110,7 @@ jobs:
             --app-version ${{ steps.version.outputs.version }} \
             --vendor OurGiant \
             --type deb \
-            --icon src/main/resources/app-icon.png \
+            --icon src/packaging/linux/app-icon.png \
             --description "FIPS-compliant Java Swing desktop password manager with AES-256-GCM encryption, TOTP multi-factor authentication, and an audit log" \
             --linux-menu-group "Utility;Security;" \
             --linux-shortcut \
