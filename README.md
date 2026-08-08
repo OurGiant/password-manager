@@ -1,5 +1,11 @@
 # Password Manager
 
+[![Build](https://github.com/OurGiant/password-manager/actions/workflows/build.yml/badge.svg)](https://github.com/OurGiant/password-manager/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/OurGiant/password-manager?label=Release)](https://github.com/OurGiant/password-manager/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/OurGiant/password-manager)](LICENSE)
+[![Java 24](https://img.shields.io/badge/Java-24-orange?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Platforms](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](#build)
+
 A FIPS-compliant Java Swing desktop password manager with AES-256-GCM encryption, TOTP multi-factor authentication, and an audit log.
 
 ## Features
