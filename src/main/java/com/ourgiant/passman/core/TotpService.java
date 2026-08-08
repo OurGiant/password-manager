@@ -121,7 +121,7 @@ public final class TotpService {
 
         // Verify it's 6 digits
         if (!code.matches("\\d{6}")) {
-            AuditLog.log("Invalid TOTP format: " + code);
+            AuditLog.log("Invalid TOTP format (length=" + code.length() + ")");
             return false;
         }
 
