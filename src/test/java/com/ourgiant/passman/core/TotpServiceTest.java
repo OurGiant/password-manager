@@ -5,6 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -89,5 +91,23 @@ class TotpServiceTest {
     @Test
     void formatSecretKey_insertsSpaceEveryFourChars() {
         assertEquals("ABCD EFGH IJ", TotpService.formatSecretKey("ABCDEFGHIJ"));
+    }
+
+    @Test
+    void verifyTOTP_onMalformedInput_neverWritesRawCodeToAuditLog() throws Exception {
+        Path logPath = AppPaths.getAppDataDir().resolve("audit.log");
+        Files.deleteIfExists(logPath);
+
+        String secret = TotpService.generateTOTPSecret();
+        // Near-miss of a real code: 5 correct digits plus one extra, still fails
+        // the \d{6} format check but would leak most of a real code if logged raw.
+        String nearMissPaste = "1234567";
+        assertFalse(TotpService.verifyTOTP(secret, nearMissPaste));
+
+        assertTrue(Files.exists(logPath), "expected an audit log entry for the failed format check");
+        String logContents = Files.readString(logPath, StandardCharsets.UTF_8);
+        assertFalse(logContents.contains(nearMissPaste),
+            "audit log must never contain the raw user-entered TOTP code");
+        assertTrue(logContents.contains("Invalid TOTP format"));
     }
 }
