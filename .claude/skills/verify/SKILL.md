@@ -15,7 +15,7 @@ actually type for *this* project.
 Maven only exists in the Docker container, not on the host:
 
 ```bash
-docker exec festive_bardeen bash -c "cd /projects/password-manager && mvn -q package -DskipTests"
+docker exec festive_bardeen bash -c "cd /projects/OHI/password-manager && mvn -q package -DskipTests"
 ```
 
 If `festive_bardeen` doesn't respond, find the current container:
@@ -44,7 +44,7 @@ as a result. Confirmed via `md5sum` on both sides that the container's
 `pom.xml` was stale. Fixed with:
 
 ```bash
-docker cp pom.xml festive_bardeen:/projects/password-manager/pom.xml
+docker cp pom.xml festive_bardeen:/projects/OHI/password-manager/pom.xml
 ```
 
 Don't assume a `pom.xml` edit landed in the container just because the
