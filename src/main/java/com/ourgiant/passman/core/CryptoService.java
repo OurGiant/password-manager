@@ -64,7 +64,12 @@ public final class CryptoService {
         return result;
     }
 
-    public static String decryptPassword(byte[] encryptedData, SecretKey masterKey) throws Exception {
+    /**
+     * Decrypts into a char[] the caller must zero when done, avoiding the unscrubbable
+     * String copy that {@link #decryptPassword(byte[], SecretKey)} has to produce for
+     * callers that need one (e.g. Swing text components take only String).
+     */
+    public static char[] decryptPasswordToChars(byte[] encryptedData, SecretKey masterKey) throws Exception {
         byte[] iv = new byte[GCM_IV_LENGTH];
         byte[] encrypted = new byte[encryptedData.length - GCM_IV_LENGTH];
 
@@ -76,7 +81,26 @@ public final class CryptoService {
         cipher.init(Cipher.DECRYPT_MODE, masterKey, parameterSpec);
 
         byte[] decrypted = cipher.doFinal(encrypted);
-        return new String(decrypted, StandardCharsets.UTF_8);
+        try {
+            CharBuffer decodedBuffer = StandardCharsets.UTF_8.decode(java.nio.ByteBuffer.wrap(decrypted));
+            char[] chars = new char[decodedBuffer.remaining()];
+            decodedBuffer.get(chars);
+            if (decodedBuffer.hasArray()) {
+                Arrays.fill(decodedBuffer.array(), '\0');
+            }
+            return chars;
+        } finally {
+            Arrays.fill(decrypted, (byte) 0);
+        }
+    }
+
+    public static String decryptPassword(byte[] encryptedData, SecretKey masterKey) throws Exception {
+        char[] chars = decryptPasswordToChars(encryptedData, masterKey);
+        try {
+            return new String(chars);
+        } finally {
+            Arrays.fill(chars, '\0');
+        }
     }
 
     /** Constant-time comparison for secret values such as PINs and TOTP codes. */

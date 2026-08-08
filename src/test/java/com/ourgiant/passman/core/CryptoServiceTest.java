@@ -63,6 +63,20 @@ class CryptoServiceTest {
     }
 
     @Test
+    void decryptPasswordToChars_roundTripsPlaintextAndCanBeZeroed() throws Exception {
+        SecretKey key = CryptoService.deriveKey("master password".toCharArray(), CryptoService.generateSalt(32));
+        byte[] encrypted = CryptoService.encryptPassword("hunter2!Zq9".toCharArray(), key);
+
+        char[] decrypted = CryptoService.decryptPasswordToChars(encrypted, key);
+        assertArrayEquals("hunter2!Zq9".toCharArray(), decrypted);
+
+        // Caller-owned buffer: zeroing it must not be a no-op copy, unlike the
+        // pre-fix totpSecret String "clearing" bug this mirrors the intent of.
+        java.util.Arrays.fill(decrypted, '\0');
+        assertArrayEquals(new char[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, decrypted);
+    }
+
+    @Test
     void constantTimeEquals_charArrays() {
         assertTrue(CryptoService.constantTimeEquals("1234".toCharArray(), "1234".toCharArray()));
         assertFalse(CryptoService.constantTimeEquals("1234".toCharArray(), "5678".toCharArray()));

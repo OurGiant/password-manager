@@ -10,7 +10,7 @@ public class DatabaseWrapper {
     private List<PasswordEntry> passwords;
 
     @JsonProperty("totpSecret")
-    private String totpSecret;
+    private char[] totpSecret;
 
     // Default constructor required for Jackson
     public DatabaseWrapper() {}
@@ -24,11 +24,11 @@ public class DatabaseWrapper {
         this.passwords = passwords;
     }
 
-    public String getTotpSecret() {
+    public char[] getTotpSecret() {
         return totpSecret;
     }
 
-    public void setTotpSecret(String totpSecret) {
+    public void setTotpSecret(char[] totpSecret) {
         this.totpSecret = totpSecret;
     }
 }
