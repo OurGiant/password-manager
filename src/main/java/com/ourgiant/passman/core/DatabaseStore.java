@@ -31,7 +31,7 @@ public final class DatabaseStore {
         return salt;
     }
 
-    public static void saveDatabase(byte[] salt, SecretKey masterKey, List<PasswordEntry> passwords, String totpSecret) throws Exception {
+    public static void saveDatabase(byte[] salt, SecretKey masterKey, List<PasswordEntry> passwords, char[] totpSecret) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         mapper.findAndRegisterModules(); // Automatically finds jackson-datatype-jsr310
         DatabaseWrapper wrapper = new DatabaseWrapper();

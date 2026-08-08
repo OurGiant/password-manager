@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -59,13 +60,13 @@ class DatabaseStoreTest {
         entry.created = LocalDateTime.now();
         entry.modified = LocalDateTime.now();
 
-        DatabaseStore.saveDatabase(salt, key, List.of(entry), "TOTPSECRETVALUE");
+        DatabaseStore.saveDatabase(salt, key, List.of(entry), "TOTPSECRETVALUE".toCharArray());
 
         DatabaseWrapper loaded = DatabaseStore.loadDatabase(key);
         assertEquals(1, loaded.getPasswords().size());
         assertEquals("example.com", loaded.getPasswords().get(0).getLocation());
         assertEquals("alice", loaded.getPasswords().get(0).getUsername());
-        assertEquals("TOTPSECRETVALUE", loaded.getTotpSecret());
+        assertArrayEquals("TOTPSECRETVALUE".toCharArray(), loaded.getTotpSecret());
         assertEquals("s3cret!", CryptoService.decryptPassword(loaded.getPasswords().get(0).getEncryptedPassword(), key));
     }
 
@@ -73,7 +74,7 @@ class DatabaseStoreTest {
     void loadDatabase_withWrongKey_throwsSecurityException() throws Exception {
         byte[] salt = CryptoService.generateSalt(32);
         SecretKey rightKey = CryptoService.deriveKey("correct horse battery staple".toCharArray(), salt);
-        DatabaseStore.saveDatabase(salt, rightKey, List.of(), "SECRET");
+        DatabaseStore.saveDatabase(salt, rightKey, List.of(), "SECRET".toCharArray());
 
         SecretKey wrongKey = CryptoService.deriveKey("wrong password".toCharArray(), salt);
         assertThrows(SecurityException.class, () -> DatabaseStore.loadDatabase(wrongKey));

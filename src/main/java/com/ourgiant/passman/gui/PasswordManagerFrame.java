@@ -59,7 +59,7 @@ public class PasswordManagerFrame extends JFrame {
     // Security state
     private SecretKey masterKey;
     private char[] commonPin;
-    private String totpSecret;
+    private char[] totpSecret;
     private int failedPinAttempts = 0;
     private int failedLoginAttempts = 0;
     private javax.swing.Timer autoLockTimer;
@@ -441,7 +441,7 @@ public class PasswordManagerFrame extends JFrame {
 
         try {
             // Generate TOTP secret
-            totpSecret = TotpService.generateTOTPSecret();
+            totpSecret = TotpService.generateTOTPSecret().toCharArray();
 
             // Show setup dialog and get TOTP code from user
             String verifiedCode = showTOTPSetupDialogWithVerification();
@@ -601,14 +601,15 @@ public class PasswordManagerFrame extends JFrame {
 
         JButton copySecretButton = new JButton("Copy");
         copySecretButton.addActionListener(e -> {
-            StringSelection selection = new StringSelection(totpSecret);
+            // System clipboard only accepts String; unavoidable, same as the QR code display.
+            StringSelection selection = new StringSelection(new String(totpSecret));
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
             JOptionPane.showMessageDialog(dialog, "Secret key copied to clipboard!", "Copied", JOptionPane.INFORMATION_MESSAGE);
         });
         keyPanel.add(copySecretButton, BorderLayout.EAST);
         secretPanel.add(keyPanel);
 
-        JTextField secretField = new JTextField(TotpService.formatSecretKey(totpSecret));
+        JTextField secretField = new JTextField(new String(TotpService.formatSecretKey(totpSecret)));
         secretField.setEditable(false);
         secretField.setFont(new Font("Monospaced", Font.BOLD, 16));
         secretField.setBackground(new Color(255, 255, 200));
@@ -728,7 +729,7 @@ public class PasswordManagerFrame extends JFrame {
         keyLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
         keyPanel.add(keyLabel, BorderLayout.WEST);
 
-        JTextField secretField = new JTextField(TotpService.formatSecretKey(totpSecret));
+        JTextField secretField = new JTextField(new String(TotpService.formatSecretKey(totpSecret)));
         secretField.setEditable(false);
         secretField.setFont(new Font("Monospaced", Font.BOLD, 16));
         secretField.setBackground(new Color(255, 255, 200));
@@ -736,7 +737,8 @@ public class PasswordManagerFrame extends JFrame {
 
         JButton copySecretButton = new JButton("Copy");
         copySecretButton.addActionListener(e -> {
-            StringSelection selection = new StringSelection(totpSecret);
+            // System clipboard only accepts String; unavoidable, same as the QR code display.
+            StringSelection selection = new StringSelection(new String(totpSecret));
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
             updateStatus("Secret key copied!");
             JOptionPane.showMessageDialog(dialog, "Secret key copied to clipboard!", "Copied", JOptionPane.INFORMATION_MESSAGE);
@@ -925,11 +927,17 @@ public class PasswordManagerFrame extends JFrame {
         failedPinAttempts = 0;
 
         try {
-            String password = CryptoService.decryptPassword(entry.encryptedPassword, masterKey);
-
-            locationField.setText(entry.location);
-            usernameField.setText(entry.username);
-            passwordField.setText(password);
+            char[] password = CryptoService.decryptPasswordToChars(entry.encryptedPassword, masterKey);
+            try {
+                locationField.setText(entry.location);
+                usernameField.setText(entry.username);
+                // JPasswordField.setText only accepts String, so this final copy can't be
+                // avoided or scrubbed — an accepted, Swing-forced exception to keeping
+                // secrets out of unclearable Strings.
+                passwordField.setText(new String(password));
+            } finally {
+                Arrays.fill(password, '\0');
+            }
             currentEntry = entry;
 
             updatePasswordStrength();
@@ -1159,8 +1167,7 @@ public class PasswordManagerFrame extends JFrame {
         }
 
         if (totpSecret != null) {
-            char[] secretChars = totpSecret.toCharArray();
-            Arrays.fill(secretChars, '0');
+            Arrays.fill(totpSecret, '\0');
             totpSecret = null;
         }
 

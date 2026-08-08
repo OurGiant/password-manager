@@ -52,15 +52,19 @@ public final class TotpService {
     }
 
     public static byte[] base32Decode(String encoded) {
+        return base32Decode(encoded.toCharArray());
+    }
+
+    /** Decodes without ever materializing the (possibly secret) input as a String. */
+    public static byte[] base32Decode(char[] encoded) {
         String base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        encoded = encoded.toUpperCase().replaceAll("[^A-Z2-7]", "");
 
         ByteArrayOutputStream result = new ByteArrayOutputStream();
         int buffer = 0;
         int bitsLeft = 0;
 
-        for (char c : encoded.toCharArray()) {
-            int val = base32Chars.indexOf(c);
+        for (char raw : encoded) {
+            int val = base32Chars.indexOf(Character.toUpperCase(raw));
             if (val < 0) continue;
 
             buffer = (buffer << 5) | val;
@@ -76,6 +80,10 @@ public final class TotpService {
     }
 
     public static String generateTOTP(String secret, long timeStep) {
+        return generateTOTP(secret.toCharArray(), timeStep);
+    }
+
+    public static String generateTOTP(char[] secret, long timeStep) {
         try {
             byte[] key = base32Decode(secret);
             byte[] data = new byte[8];
@@ -107,12 +115,20 @@ public final class TotpService {
     }
 
     public static String generateCurrentTOTP(String secret) {
+        return generateCurrentTOTP(secret.toCharArray());
+    }
+
+    public static String generateCurrentTOTP(char[] secret) {
         long currentTime = System.currentTimeMillis() / 1000 / TOTP_PERIOD;
         return generateTOTP(secret, currentTime);
     }
 
     public static boolean verifyTOTP(String totpSecret, String code) {
-        if (totpSecret == null || code == null || code.trim().isEmpty()) {
+        return verifyTOTP(totpSecret == null ? null : totpSecret.toCharArray(), code);
+    }
+
+    public static boolean verifyTOTP(char[] totpSecret, String code) {
+        if (totpSecret == null || totpSecret.length == 0 || code == null || code.trim().isEmpty()) {
             return false;
         }
 
@@ -142,18 +158,34 @@ public final class TotpService {
     }
 
     public static String formatSecretKey(String key) {
-        // Format key with spaces every 4 characters for readability
-        StringBuilder formatted = new StringBuilder();
-        for (int i = 0; i < key.length(); i++) {
+        return new String(formatSecretKey(key.toCharArray()));
+    }
+
+    /** Formats with spaces every 4 characters for readability, without an intermediate String. */
+    public static char[] formatSecretKey(char[] key) {
+        int spaces = key.length == 0 ? 0 : (key.length - 1) / 4;
+        char[] formatted = new char[key.length + spaces];
+        int out = 0;
+        for (int i = 0; i < key.length; i++) {
             if (i > 0 && i % 4 == 0) {
-                formatted.append(" ");
+                formatted[out++] = ' ';
             }
-            formatted.append(key.charAt(i));
+            formatted[out++] = key[i];
         }
-        return formatted.toString();
+        return formatted;
     }
 
     public static BufferedImage generateQRCode(String issuer, String account, String secret) throws Exception {
+        return generateQRCode(issuer, account, secret.toCharArray());
+    }
+
+    /**
+     * Generates a scannable enrollment QR code. The secret is necessarily rendered as a
+     * visible URI here (the whole point of this method is to display it for authenticator
+     * app enrollment), so unlike the app's long-lived in-memory secret, an unscrubbable
+     * String for the URI is an accepted, unavoidable cost of this specific display path.
+     */
+    public static BufferedImage generateQRCode(String issuer, String account, char[] secret) throws Exception {
         String algorithm = "SHA1"; // For Google Authenticator compatibility
         int digits = 6;
         int period = 30;
@@ -161,7 +193,7 @@ public final class TotpService {
         // Construct the TOTP URI
         String totpUri = String.format(
             "otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=%s&digits=%d&period=%d",
-            issuer, account, secret, issuer, algorithm, digits, period
+            issuer, account, new String(secret), issuer, algorithm, digits, period
         );
 
         // Generate QR code

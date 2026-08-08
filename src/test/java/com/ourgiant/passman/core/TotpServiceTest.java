@@ -61,7 +61,7 @@ class TotpServiceTest {
         assertFalse(TotpService.verifyTOTP(secret, "12345")); // too short
         assertFalse(TotpService.verifyTOTP(secret, ""));
         assertFalse(TotpService.verifyTOTP(secret, null));
-        assertFalse(TotpService.verifyTOTP(null, "123456"));
+        assertFalse(TotpService.verifyTOTP((String) null, "123456"));
     }
 
     @Test
@@ -91,6 +91,23 @@ class TotpServiceTest {
     @Test
     void formatSecretKey_insertsSpaceEveryFourChars() {
         assertEquals("ABCD EFGH IJ", TotpService.formatSecretKey("ABCDEFGHIJ"));
+    }
+
+    @Test
+    void charArrayOverloads_behaveIdenticallyToStringOverloads() {
+        char[] secret = TotpService.generateTOTPSecret().toCharArray();
+        String currentCode = TotpService.generateCurrentTOTP(secret);
+
+        assertEquals(TotpService.generateCurrentTOTP(new String(secret)), currentCode);
+        assertTrue(TotpService.verifyTOTP(secret, currentCode));
+        assertArrayEquals(TotpService.base32Decode(new String(secret)), TotpService.base32Decode(secret));
+        assertArrayEquals("ABCD EFGH IJ".toCharArray(), TotpService.formatSecretKey("ABCDEFGHIJ".toCharArray()));
+    }
+
+    @Test
+    void verifyTOTP_charArrayOverload_rejectsNullOrEmptySecret() {
+        assertFalse(TotpService.verifyTOTP((char[]) null, "123456"));
+        assertFalse(TotpService.verifyTOTP(new char[0], "123456"));
     }
 
     @Test
